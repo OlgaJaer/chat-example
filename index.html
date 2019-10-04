@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Socket.IO chat</title>
+  <link rel="stylesheet" type="text/css" href="./public/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+    $(function () {
+      var socket = io.connect();
+      $('#chatForm').submit(function(e) {
+        e.preventDefault();
+        socket.emit('send message', $('#messageText').val());
+        $('#messageText').val('');
+      });
+
+      socket.on('new message', function(data) {
+        $('#messages').append($('<li>').text(data.user+ ': ' +data.msg + ' '+ new Date().getHours()+':'+ new Date().getMinutes()));
+      });
+
+      $('#authForm').submit(function(e) {
+        e.preventDefault();
+        socket.emit('new user', {user: $('#fullName').val(), nick:$('#nickName').val()}, function(data){
+          console.log(data);
+          if(data) { 
+            $('#userAuth').hide();
+            $('#messages').show();
+          } 
+        });
+
+        $('#fullName').val('');
+        $('#nickName').val('');
+      });
+
+      socket.on('get users', function(data){
+        let html = '';
+        console.log(data);
+        for (i = 0; i < data.length; i++) {
+          html += $('#users').append($('<li>').text(data[i])); 
+        }
+      });
+    });
+    /*const socket = io();
+    const messageText = document.querySelector('#messageText');
+    const sendButton = document.querySelector('#sendMessage');
+    const messageContainer = document.querySelector('#messages');
+
+    socket.on('add message', (e) => {
+      addMessage(e.data)
+    });
+
+    socket.on('error', () => {
+      alert('Соединение не может быть открыто');
+    });
+
+    function addMessage(msg) {
+      const messageItem = document.createElement('li');
+      messageItem.className = 'messages-item';
+      messageItem.textContent = msg;
+
+      messageContainer.appendChild(messageItem);
+      messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+
+    sendButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      let text = messageText.value;
+      messageText.value = '';
+
+      socket.emit('send message', text);
+      return false;
+    });*/
+
+    //function sendMessage() {
+    //  socket.send(messageText.value);
+    //  messageText.value = '';
+    //}
+    //socket.emit('chat message', sendMessage);
+    //sendButton.emit('click', sendMessage);
+    //messageText.emit('change', sendMessage);
+
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="col-left" id="userArea">
+      <div class="user">
+        <div class="user-photo"></div>
+        <div class="user-name">Добро пожаловать!</div>
+      </div>
+      <ul id="users"></ul>
+    </div>
+    <div class="col-right">
+      <div class="chat-area">
+        <div class="user-auth" id="userAuth">
+          <h1>Авторизация</h1>
+          <form id="authForm">
+            <input id="fullName" type="text" placeholder="Фио">
+            <input id="nickName" type="text" placeholder="Ник">
+            <button class="btn">Войти</button>
+          </form>
+        </div>
+        <ul id="messages" class="messages"></ul>
+      </div>
+      <div>
+        <form class="" id="chatForm">
+          <div class="chat-inputs">
+            <input id="messageText" type="text" autocomplete="off">
+            <button class="btn" id="sendMessage">Отправить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
