@@ -11,78 +11,88 @@
   <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
   <script>
     $(function () {
+      var username;
+      var connected = false;
+
       var socket = io.connect();
-      $('#chatForm').submit(function(e) {
+
+      const addParticipantsMessage = (data) => {
+        console.log(data); 
+        var message = '';
+        if (data.numUsers === 1) {
+          message += "Участник(1)";
+        } else {
+          message += "Участники(" + data.numUsers + ")";
+        }
+        $('#users').text(message);
+        //$('#userName').text(data.username);
+      }
+
+      $('#authForm').submit(function (e) {
         e.preventDefault();
-        socket.emit('send message', $('#messageText').val());
-        $('#messageText').val('');
-      });
-
-      socket.on('new message', function(data) {
-        $('#messages').append($('<li>').text(data.user+ ': ' +data.msg + ' '+ new Date().getHours()+':'+ new Date().getMinutes()));
-      });
-
-      $('#authForm').submit(function(e) {
-        e.preventDefault();
-        socket.emit('new user', {user: $('#fullName').val(), nick:$('#nickName').val()}, function(data){
-          console.log(data);
-          if(data) { 
-            $('#userAuth').hide();
-            $('#messages').show();
-          } 
-        });
-
+        username = $('#fullName').val();
+        var nickname = $('#nickName').val();
+        if (username && nickname) {
+          socket.emit('add user', username);
+          $('#userAuth').hide();
+          $('#messages').show();
+          $('#users').show();
+        }
         $('#fullName').val('');
         $('#nickName').val('');
       });
 
-      socket.on('get users', function(data){
-        let html = '';
+      $('#chatForm').submit(function (e) {
+        e.preventDefault();
+        let message = $('#messageText').val();
+        if (message && connected) {
+          $('#messageText').val('');
+          console.log(message);
+          addChatMessage({
+            username: username,
+            message: message
+          });
+        }
+        console.log(message);
+        socket.emit('new message', message);
+      });
+
+      const addChatMessage = (data) => {
+        $('#messages').append($('<li>').text(data.username + ': ' + data.message + ' ' + new Date().getHours() + ':' + new Date().getMinutes()));
+      }
+
+      socket.on('login', (data) => {
+        connected = true;
+        addParticipantsMessage(data);
+      });
+
+      // Whenever the server emits 'new message', update the chat body
+      socket.on('new message', (data) => {
+        addChatMessage(data);
+      });
+
+      // Whenever the server emits 'user joined', log it in the chat body
+      socket.on('user joined', (data) => {
         console.log(data);
-        for (i = 0; i < data.length; i++) {
-          html += $('#users').append($('<li>').text(data[i])); 
+        $('#userName').text(data.username);
+        addParticipantsMessage(data);
+      });
+
+      socket.on('disconnect', () => {
+        console.log('you have been disconnected');
+      });
+
+      socket.on('reconnect', () => {
+        console.log('you have been reconnected');
+        if (username) {
+          socket.emit('add user', username);
         }
       });
+
+      socket.on('reconnect_error', () => {
+        console.log('attempt to reconnect has failed');
+      });
     });
-    /*const socket = io();
-    const messageText = document.querySelector('#messageText');
-    const sendButton = document.querySelector('#sendMessage');
-    const messageContainer = document.querySelector('#messages');
-
-    socket.on('add message', (e) => {
-      addMessage(e.data)
-    });
-
-    socket.on('error', () => {
-      alert('Соединение не может быть открыто');
-    });
-
-    function addMessage(msg) {
-      const messageItem = document.createElement('li');
-      messageItem.className = 'messages-item';
-      messageItem.textContent = msg;
-
-      messageContainer.appendChild(messageItem);
-      messageContainer.scrollTop = messageContainer.scrollHeight;
-    }
-
-    sendButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      let text = messageText.value;
-      messageText.value = '';
-
-      socket.emit('send message', text);
-      return false;
-    });*/
-
-    //function sendMessage() {
-    //  socket.send(messageText.value);
-    //  messageText.value = '';
-    //}
-    //socket.emit('chat message', sendMessage);
-    //sendButton.emit('click', sendMessage);
-    //messageText.emit('change', sendMessage);
-
   </script>
 </head>
 
@@ -91,7 +101,7 @@
     <div class="col-left" id="userArea">
       <div class="user">
         <div class="user-photo"></div>
-        <div class="user-name">Добро пожаловать!</div>
+        <div class="user-name" id="userName">Добро пожаловать!</div>
       </div>
       <ul id="users"></ul>
     </div>

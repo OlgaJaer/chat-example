@@ -2,8 +2,6 @@ var express = require('express');
 var app = express();
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
-users = [];
-connections = [];
 
 http.listen(process.env.PORT || 3000, function(){
   console.log('listening on *:3000');
@@ -15,33 +13,59 @@ app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
 
-io.sockets.on('connection', function(socket) {
-  connections.push(socket);
-  console.log('Connected: %s sockets connected', connections.length);
-  
-  //Disconnect
-  socket.on('disconnect', function(data) {
-    users.splice(users.indexOf(socket.username), 1);
-    updateUsernames();
-    connections.splice(connections.indexOf(socket), 1);
-    console.log('Disconnected: %s sockets connected', connections.length);
+/*app.post('/public', function(req, res){
+  if(req.body.name === 'Olga' && req.body.password === 'olga') {
+    res.send('ok');
+  } else {
+    res.send('some mistake');
+  }
+});*/
+
+let numUsers = 0;
+
+io.on('connection', (socket) => {
+  var addedUser = false;
+
+  // when the client emits 'new message', this listens and executes
+  socket.on('new message', (data) => {
+    // we tell the client to execute 'new message'
+    socket.broadcast.emit('new message', {
+      username: socket.username,
+      message: data
+    });
+
   });
 
-  //send message
-  socket.on('send message', function(data){
-    io.sockets.emit('new message', {msg: data, user: socket.username});
+  // when the client emits 'add user', this listens and executes
+  socket.on('add user', (username) => {
+    if (addedUser) return;
+
+    // we store the username in the socket session for this client
+    socket.username = username;
+    ++numUsers;
+    addedUser = true;
+    socket.emit('login', {
+      username: socket.username,
+      numUsers: numUsers
+    });
+    // echo globally (all clients) that a person has connected
+    socket.broadcast.emit('user joined', {
+      username: socket.username,
+      numUsers: numUsers
+    });
   });
 
-  //new user
-  socket.on('new user', function(data, cb){
-    cb(true);
-    socket.username = data.user;
-    users.push(socket.username);
-    updateUsernames();
-  });
+  // when the user disconnects.. perform this
+  socket.on('disconnect', () => {
+    if (addedUser) {
+      --numUsers;
 
-  function updateUsernames(){
-    io.sockets.emit('get users', users);
-  } 
+      // echo globally that this client has left
+      socket.broadcast.emit('user left', {
+        username: socket.username,
+        numUsers: numUsers
+      });
+    }
+  });
 });
 
