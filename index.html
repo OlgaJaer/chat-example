@@ -66,12 +66,10 @@
         addParticipantsMessage(data);
       });
 
-      // Whenever the server emits 'new message', update the chat body
       socket.on('new message', (data) => {
         addChatMessage(data);
       });
 
-      // Whenever the server emits 'user joined', log it in the chat body
       socket.on('user joined', (data) => {
         console.log(data);
         $('#userName').text(data.username);
@@ -87,10 +85,6 @@
         if (username) {
           socket.emit('add user', username);
         }
-      });
-
-      socket.on('reconnect_error', () => {
-        console.log('attempt to reconnect has failed');
       });
     });
   </script>
